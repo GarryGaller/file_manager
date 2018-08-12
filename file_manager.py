@@ -139,7 +139,7 @@ def enum_dir(inp):
             name = ''.join(
                 [name, 
                 COLOR.get('cyan',''),
-                str(round(entry.stat().st_size/1024)),
+                str(round(entry.stat().st_size/1024,3)),
                 ' kb',
                 RESET
                 ]
