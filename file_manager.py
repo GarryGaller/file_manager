@@ -5,9 +5,15 @@ from pathlib import Path
 from string import Template
 
 __author__ = "Garry Galler"
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 #-------------------------------------
-ROOT = os.path.abspath('.').lower()
+
+def lower(s):
+    '''приведение имен к нижнему регистру только для windows'''
+    return s.lower() if not CASE_SENSITIVE else s 
+    
+CASE_SENSITIVE = os.name != 'nt' 
+ROOT = lower(os.path.abspath('.'))
 LAST_SCANDIR = defaultdict(list)
 COLOR = {}
 RESET = ''
@@ -186,14 +192,14 @@ def get_selected_file():
         
         # если вам скажут, что в Python нет switch - покажите ему это:
         result = {
-            ''      :partial(after_input,ROOT.lower()),
+            ''      :partial(after_input,lower(ROOT)),
             ':exit' :lambda:(-1,None), # выход из цикла, без выхода из приложения
             ':clear':clear,            # очистка экрана консоли
             ':e'    :lambda:(-1,None), 
             ':c'    :clear       
         }.get(inp,
             # ветка default
-            partial(after_input,inp.lower())
+            partial(after_input,lower(inp))
         )()      
         
         if result[0] == 0:
@@ -208,6 +214,7 @@ if __name__ == "__main__":
     err, sfile = get_selected_file()
     if err != -1:
         print("Выбран файл:", COLOR['back'] + sfile + RESET)
+        print(LAST_SCANDIR.keys())
     else:
         print("Файл не выбран") 
 
