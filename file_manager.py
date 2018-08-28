@@ -11,13 +11,13 @@ __version__ = "1.0.2"
 def lower(s):
     '''приведение имен к нижнему регистру только для windows'''
     return s.lower() if not CASE_SENSITIVE else s 
-    
+
+COLOR = {}
+RESET = ''
 CASE_SENSITIVE = os.name != 'nt' 
 ROOT = lower(os.path.abspath('.'))
 LAST_SCANDIR = defaultdict(list)
-COLOR = {}
-RESET = ''
-#-------------------------------------
+
 try:
     import colorama
 except ImportError:
@@ -25,7 +25,7 @@ except ImportError:
 else:
     colorama.init(autoreset=True)
     from colorama import Fore, Back, Style
-
+    
     RESET = Style.RESET_ALL
     COLOR.update({
         'file':   Fore.GREEN,
@@ -42,6 +42,7 @@ else:
 PROMPT_TEMPLATE = Template('''
 $back$exit      $reset$red Выход $reset
 $back$clear      $reset$yellow Очистка экрана $reset
+$back$rescan     $reset$yellow Пересканировать $reset
 $back$current   $reset$cyan$bright $root $reset'''
 )
 
@@ -49,6 +50,7 @@ PROMPT_KWARGS = dict(
       root=ROOT,
       exit=':exit, :e',
       clear=':clear,:c',
+      rescan=':rescan,:r',
       current='current_path',
       reset=RESET,
       back=COLOR.get('back',''),
@@ -64,6 +66,17 @@ def clear():
     os.system('cls' if os.name == 'nt' else "clear")
     return None,None
 
+
+def rescan(inp):
+    '''повторное сканирование директории'''
+    enum_dir(inp,scan=True)
+    print(''.join(
+        COLOR['yellow'],
+        "\nКаталог {} пересканирован".format(inp),
+        RESET)
+    )
+    return None,None
+    
 
 def type_entry(entry):
     '''определяем тип записи'''
@@ -106,7 +119,7 @@ def get_path_from_link(path):
     return inner
     
 
-def enum_dir(inp):
+def enum_dir(inp,scan=False):
     '''перечисление содержимого директории в виде записей
     класса DirEntry
     '''
@@ -123,11 +136,16 @@ def enum_dir(inp):
     print('ROOT:',path)
     
     if ROOT in LAST_SCANDIR:
-        entries = LAST_SCANDIR[ROOT]
-        add_entries = False    
+        if not scan:
+            entries = LAST_SCANDIR[ROOT]
+            add_entries = False
+        else:
+             LAST_SCANDIR[ROOT] = []
+             entries = os.scandir(inp)       
     else:
         entries = os.scandir(inp)
-    
+        
+        
     for i,entry in enumerate(entries):
         link = '' 
         te = type_entry(entry)
@@ -192,11 +210,14 @@ def get_selected_file():
         
         # если вам скажут, что в Python нет switch - покажите ему это:
         result = {
-            ''      :partial(after_input,lower(ROOT)),
-            ':exit' :lambda:(-1,None), # выход из цикла, без выхода из приложения
-            ':clear':clear,            # очистка экрана консоли
-            ':e'    :lambda:(-1,None), 
-            ':c'    :clear       
+            ''       :partial(after_input,lower(ROOT)),
+            ':exit'  :lambda:(-1,None), # выход из цикла, без выхода из приложения
+            ':clear' :clear,            # очистка экрана консоли
+            ':rescan':partial(rescan,lower(ROOT)), 
+            ':e'     :lambda:(-1,None), 
+            ':c'     :clear,
+            ':r':partial(rescan,lower(ROOT))  
+                  
         }.get(inp,
             # ветка default
             partial(after_input,lower(inp))
@@ -211,6 +232,7 @@ def get_selected_file():
     return result
 
 if __name__ == "__main__":
+    
     err, sfile = get_selected_file()
     if err != -1:
         print("Выбран файл:", COLOR['back'] + sfile + RESET)
